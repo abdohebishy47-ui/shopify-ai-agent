@@ -1,11 +1,12 @@
 import asyncio
 import logging
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi import FastAPI, Request, Response, HTTPException, Depends
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from pydantic import BaseModel
 
 from src.config import settings
@@ -21,6 +22,22 @@ logger = logging.getLogger("main")
 
 BASE_DIR = Path(__file__).resolve().parent
 INDEX_HTML_PATH = BASE_DIR / "dashboard" / "templates" / "index.html"
+LOGIN_HTML_PATH = BASE_DIR / "dashboard" / "templates" / "login.html"
+
+# Active sessions store in memory: token -> username
+SESSIONS: dict[str, str] = {}
+
+def get_current_user(request: Request) -> Optional[str]:
+    token = request.cookies.get("session_token")
+    if not token or token not in SESSIONS:
+        return None
+    return SESSIONS[token]
+
+def require_auth(request: Request) -> str:
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return user
 
 shopify_client = ShopifyClient()
 ai_agent = AIAgent(shopify_client)
@@ -57,11 +74,17 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Shopify AI Agent - elhoda.net", lifespan=lifespan)
 
 # Request Models
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 class SettingsUpdateRequest(BaseModel):
     shopify_store_url: Optional[str] = None
     shopify_token: Optional[str] = None
     gemini_key: Optional[str] = None
     telegram_token: Optional[str] = None
+    admin_password: Optional[str] = None
+    admin_username: Optional[str] = None
 
 class AICommandRequest(BaseModel):
     prompt: str
@@ -76,8 +99,51 @@ class OptimizeSeoRequest(BaseModel):
     custom_instructions: Optional[str] = None
 
 # Routes
-@app.get("/", response_class=FileResponse)
-async def dashboard_view():
+@app.get("/login")
+async def login_page(request: Request):
+    if get_current_user(request):
+        return RedirectResponse(url="/", status_code=302)
+    return FileResponse(LOGIN_HTML_PATH)
+
+@app.post("/api/login")
+async def api_login(req: LoginRequest, response: Response):
+    users = settings.get_users_dict()
+    u = req.username.strip()
+    p = req.password.strip()
+    if u in users and users[u] == p:
+        token = secrets.token_urlsafe(32)
+        SESSIONS[token] = u
+        response.set_cookie(
+            key="session_token",
+            value=token,
+            httponly=True,
+            samesite="lax",
+            max_age=86400 * 7 # 7 days
+        )
+        return {"success": True, "username": u}
+    return {"success": False, "message": "اسم المستخدم أو كلمة المرور غير صحيحة"}
+
+@app.get("/logout")
+async def logout_view(request: Request):
+    token = request.cookies.get("session_token")
+    if token and token in SESSIONS:
+        del SESSIONS[token]
+    resp = RedirectResponse(url="/login", status_code=302)
+    resp.delete_cookie("session_token")
+    return resp
+
+@app.get("/api/me")
+async def me_view(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return {"authenticated": False}
+    return {"authenticated": True, "username": user}
+
+@app.get("/")
+async def dashboard_view(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
     return FileResponse(INDEX_HTML_PATH)
 
 @app.get("/api/settings")
@@ -123,6 +189,11 @@ async def update_settings_endpoint(req: SettingsUpdateRequest):
         env_map["TELEGRAM_BOT_TOKEN"] = req.telegram_token.strip()
         settings.TELEGRAM_BOT_TOKEN = req.telegram_token.strip()
 
+    if req.admin_password and req.admin_username:
+        new_users_str = f"{req.admin_username.strip()}:{req.admin_password.strip()}"
+        env_map["DASHBOARD_USERS"] = new_users_str
+        settings.DASHBOARD_USERS = new_users_str
+
     # Recreate clients with new credentials
     global shopify_client, ai_agent
     shopify_client = ShopifyClient()
@@ -136,6 +207,8 @@ async def update_settings_endpoint(req: SettingsUpdateRequest):
         f"GEMINI_API_KEY={env_map.get('GEMINI_API_KEY', '')}",
         f"TELEGRAM_BOT_TOKEN={env_map.get('TELEGRAM_BOT_TOKEN', '')}",
         f"TELEGRAM_ALLOWED_USER_IDS={env_map.get('TELEGRAM_ALLOWED_USER_IDS', '')}",
+        f"DASHBOARD_USERS={env_map.get('DASHBOARD_USERS', 'admin:elhoda@2026')}",
+        f"SECRET_KEY={env_map.get('SECRET_KEY', 'elhoda-super-secret-key-2026')}",
         f"HOST={env_map.get('HOST', '127.0.0.1')}",
         f"PORT={env_map.get('PORT', '8000')}"
     ]
