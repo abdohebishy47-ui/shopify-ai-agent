@@ -61,6 +61,15 @@ class AIAgent:
                 "custom_instructions": user_message
             }
 
+        if any(w in lower_msg for w in ["ضيف المنتجات", "ارفع المنتجات", "قائمة منتجات", "منتجات جديدة", "انشئ منتج", "ضيف منتج", "اضف منتج", "ليستة"]):
+            return {
+                "action": "create_products",
+                "product_query": "new",
+                "new_price": None,
+                "compare_at_price": None,
+                "custom_instructions": user_message
+            }
+
         system_prompt = (
             "You are an AI eCommerce Assistant specialized in Shopify management.\n"
             "Analyze the user's message (which is typically in Arabic or English) and extract the intent.\n"
@@ -185,6 +194,106 @@ class AIAgent:
             "items": details[:10]
         }
 
+    async def parse_new_products_list(self, raw_text: str) -> list[dict[str, Any]]:
+        """Extract structured list of products from user's natural language or copied list."""
+        system_prompt = (
+            "You are an eCommerce product data extractor specialized in Arabic and English eCommerce.\n"
+            "Analyze the user's text which contains details or a list of new products to add to Shopify.\n"
+            "Extract all products into a JSON array of objects matching:\n"
+            "[\n"
+            "  {\n"
+            '    "title": "اسم المنتج",\n'
+            '    "price": float (السعر),\n'
+            '    "compare_at_price": float or null (السعر قبل الخصم إن وجد),\n'
+            '    "product_type": "تصنيف المنتج (مثل عبايات، فساتين، شيلان، إكسسوارات)",\n'
+            '    "notes": "أي ملاحظات إضافية مذكورة مثل الألوان، الخامة، المقاسات"\n'
+            "  }\n"
+            "]"
+        )
+        raw = await self._call_gemini(
+            prompt=f"Text to parse:\n{raw_text}",
+            system_instruction=system_prompt,
+            json_mode=True
+        )
+        try:
+            res = json.loads(raw)
+            return res if isinstance(res, list) else []
+        except Exception:
+            return []
+
+    async def create_and_publish_products(self, raw_text: str) -> dict[str, Any]:
+        """Parse list of products, generate SEO & GEO metadata for each, and create them in Shopify."""
+        extracted = await self.parse_new_products_list(raw_text)
+        if not extracted:
+            return {
+                "success": False,
+                "message": "لم أتمكن من استخراج تفاصيل المنتجات من النص. يرجى كتابة قائمة المنتجات مع أسعارها بوضوح."
+            }
+
+        created_items = []
+        failed_items = []
+
+        for item in extracted:
+            title = item.get("title", "").strip()
+            price = item.get("price")
+            compare_price = item.get("compare_at_price")
+            p_type = item.get("product_type", "أزياء وملابس")
+            notes = item.get("notes", "")
+
+            if not title or price is None:
+                continue
+
+            dummy_prod = {
+                "title": title,
+                "body_html": f"<p>{title}</p><p>{notes}</p>",
+                "tags": p_type,
+                "variants": [{"price": str(price)}]
+            }
+            try:
+                seo_data = await self.generate_seo(dummy_prod, custom_instructions=notes)
+                res = await self.shopify.create_product(
+                    title=title,
+                    price=price,
+                    body_html=seo_data.get("improved_body_html", f"<p>{title}</p>"),
+                    compare_at_price=compare_price,
+                    product_type=p_type,
+                    tags=seo_data.get("tags", []),
+                    seo_title=seo_data.get("seo_title"),
+                    seo_description=seo_data.get("seo_description")
+                )
+                if res.get("success"):
+                    created_items.append({
+                        "id": res.get("product_id"),
+                        "title": title,
+                        "price": price,
+                        "seo_title": seo_data.get("seo_title")
+                    })
+                else:
+                    failed_items.append({"title": title, "error": res.get("error")})
+            except Exception as e:
+                logger.error(f"Error creating product {title}: {e}")
+                failed_items.append({"title": title, "error": str(e)})
+
+        if not created_items:
+            return {
+                "success": False,
+                "message": f"تعذر إنشاء المنتجات في شوبيفاي. التفاصيل: {failed_items}"
+            }
+
+        lines = [f"🎉 **تم إنشاء ورفع {len(created_items)} منتج جديد بنجاح إلى متجر الهدى (elhoda.net)!**\n"]
+        for p in created_items:
+            lines.append(f"• **{p['title']}** — {p['price']} ج.م (تم تجهيز سيو Google و AI ✅)")
+
+        if failed_items:
+            lines.append(f"\n⚠️ تعذر رفع {len(failed_items)} منتج بسبب خطأ من Shopify.")
+
+        return {
+            "success": True,
+            "created_count": len(created_items),
+            "created_items": created_items,
+            "message": "\n".join(lines)
+        }
+
     async def execute_command(self, user_message: str) -> dict[str, Any]:
         """Full end-to-end processing pipeline for a natural language user command."""
         # 1. Parse intent
@@ -195,6 +304,10 @@ class AIAgent:
         # Handle bulk store SEO optimization
         if action == "bulk_seo_store":
             return await self.bulk_optimize_store(limit=50)
+
+        # Handle new products upload
+        if action == "create_products":
+            return await self.create_and_publish_products(user_message)
 
         if not product_query:
             return {

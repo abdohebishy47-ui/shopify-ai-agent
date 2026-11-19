@@ -177,11 +177,15 @@
                     <p class="text-xs text-slate-500">تحكم بأسعار المنتجات والـ SEO مباشرة بضغطة زر واحدة.</p>
                 </div>
                 <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <button onclick="openNewProductsModal()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl transition shadow flex items-center gap-1.5 whitespace-nowrap">
+                        <i class="fa-solid fa-plus"></i>
+                        رفع قائمة منتجات جديدة
+                    </button>
                     <input 
                         type="text" 
                         id="tableSearchInput" 
                         placeholder="ابحث بالاسم أو التصنيف..." 
-                        class="px-3.5 py-2 border border-slate-300 rounded-xl text-xs w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        class="px-3.5 py-2 border border-slate-300 rounded-xl text-xs w-full sm:w-60 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                     <button id="refreshProductsBtn" class="p-2 border border-slate-300 hover:bg-slate-50 rounded-xl text-slate-600 transition" title="تحديث القائمة">
                         <i class="fa-solid fa-arrows-rotate"></i>
@@ -319,6 +323,58 @@
             <button id="closeBulkModalBtn" onclick="closeBulkSeoModal()" class="hidden px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs">
                 إغلاق وفتح المنتجات
             </button>
+        </div>
+    </div>
+
+    <!-- New Products Bulk Upload Modal -->
+    <div id="newProductsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">إضافة ورفع منتجات جديدة بالذكاء الاصطناعي</h3>
+                        <p class="text-[11px] text-slate-400">الصق قائمة المنتجات وسيقوم الوكيل بصياغة السيو والتسعير ورفعها لمتجر الهدى.</p>
+                    </div>
+                </div>
+                <button onclick="closeNewProductsModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="newProductsForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                        الصق قائمة المنتجات هنا (أي صيغة نصية يفهمها الـ AI):
+                    </label>
+                    <textarea 
+                        id="newProductsInput" 
+                        rows="7" 
+                        required
+                        placeholder="مثال:&#10;1. عباية حرير إماراتي - السعر 650 جنيه - متوفر أسود وكحلي&#10;2. شال صوف كشمير أصلي - السعر 250 جنيه بدل 300&#10;3. فستان قطن صيفي كاجوال - 450 جنيه"
+                        class="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 font-sans leading-relaxed"
+                    ></textarea>
+                </div>
+
+                <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-[11px] text-emerald-800 space-y-1">
+                    <p class="font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-sparkles text-emerald-600"></i> ماذا سيفعل الذكاء الاصطناعي لكل منتج؟
+                    </p>
+                    <p>• يستخرج الاسم والسعر والخصم والتصنيف بدقة.</p>
+                    <p>• يصيغ عنوان ووصف سيو متصدر لمحركات بحث Google و ChatGPT.</p>
+                    <p>• ينشئ كود Schema وبيانات منظمة ويرفع المنتج فوراً إلى Shopify.</p>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeNewProductsModal()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-xl text-xs hover:bg-slate-50">إلغاء</button>
+                    <button type="submit" id="submitNewProductsBtn" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow flex items-center gap-1.5">
+                        <i class="fa-solid fa-rocket"></i>
+                        إنشاء ورفع المنتجات لـ Shopify 🚀
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -598,6 +654,61 @@
             if (bulkPollTimer) clearInterval(bulkPollTimer);
             document.getElementById('bulkSeoModal').classList.add('hidden');
         }
+
+        // New Products Modal Handlers
+        function openNewProductsModal() {
+            document.getElementById('newProductsModal').classList.remove('hidden');
+            document.getElementById('newProductsInput').focus();
+        }
+
+        function closeNewProductsModal() {
+            document.getElementById('newProductsModal').classList.add('hidden');
+        }
+
+        document.getElementById('newProductsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const raw_text = document.getElementById('newProductsInput').value.trim();
+            if (!raw_text) return;
+
+            const btn = document.getElementById('submitNewProductsBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> الـ AI يقوم بإنشاء ورفع المنتجات...';
+
+            Swal.fire({
+                title: 'جارِ إنشاء ورفع المنتجات إلى Shopify...',
+                text: 'الذكاء الاصطناعي يقوم الآن باستخراج المنتجات وصياغة بيانات الـ SEO والـ Schema ورفعها لمتجر الهدى.',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const res = await fetch('/api/create-products', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ raw_text })
+                });
+                const data = await res.json();
+                closeNewProductsModal();
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-rocket"></i> إنشاء ورفع المنتجات لـ Shopify 🚀';
+
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'تم رفع المنتجات بنجاح!',
+                        html: `<div class="text-right whitespace-pre-line text-sm">${data.message}</div>`
+                    });
+                    document.getElementById('newProductsInput').value = '';
+                    loadProducts();
+                } else {
+                    Swal.fire('تنبيه', data.message || 'حدث خطأ أثناء الرفع', 'warning');
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-rocket"></i> إنشاء ورفع المنتجات لـ Shopify 🚀';
+                Swal.fire('خطأ', err.message, 'error');
+            }
+        });
 
         let currentUserRole = 'staff';
 

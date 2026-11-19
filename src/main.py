@@ -380,6 +380,9 @@ async def optimize_seo(req: OptimizeSeoRequest, request: Request):
         logger.exception("Error optimizing SEO")
         return {"success": False, "error": str(e)}
 
+class CreateProductsTextRequest(BaseModel):
+    raw_text: str
+
 # Bulk SEO background state
 BULK_TRACKER: dict[str, Any] = {
     "status": "idle",
@@ -388,6 +391,22 @@ BULK_TRACKER: dict[str, Any] = {
     "current_product": "",
     "optimized_count": 0
 }
+
+@app.post("/api/create-products")
+async def create_products_endpoint(req: CreateProductsTextRequest, request: Request):
+    user = require_auth(request)
+    try:
+        res = await ai_agent.create_and_publish_products(req.raw_text)
+        if res.get("success"):
+            log_activity(
+                username=user["username"],
+                action="إضافة منتجات جديدة",
+                details=f"تم إنشاء ورفع {res.get('created_count', 0)} منتج جديد إلى متجر الهدى بنجاح"
+            )
+        return res
+    except Exception as e:
+        logger.exception("Error creating products")
+        return {"success": False, "message": str(e)}
 
 @app.post("/api/bulk-seo")
 async def start_bulk_seo(request: Request):

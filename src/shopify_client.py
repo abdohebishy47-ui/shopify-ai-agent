@@ -180,3 +180,55 @@ class ShopifyClient:
                 }
             logger.error(f"Failed to update SEO for product {product_id}: {response.text}")
             return {"success": False, "error": response.text}
+
+    async def create_product(
+        self,
+        title: str,
+        price: float | str,
+        body_html: str = "",
+        compare_at_price: Optional[float | str] = None,
+        product_type: str = "",
+        tags: Optional[list[str] | str] = None,
+        seo_title: Optional[str] = None,
+        seo_description: Optional[str] = None,
+        images: Optional[list[str]] = None
+    ) -> dict[str, Any]:
+        """Create a new product on Shopify with pricing, SEO metadata, and category."""
+        async with self._client() as client:
+            url = f"{self.base_url}/products.json"
+            
+            variant: dict[str, Any] = {
+                "price": f"{float(price):.2f}"
+            }
+            if compare_at_price:
+                variant["compare_at_price"] = f"{float(compare_at_price):.2f}"
+
+            product_payload: dict[str, Any] = {
+                "title": title,
+                "body_html": body_html,
+                "vendor": "متجر الهدى",
+                "product_type": product_type or "ملابس وأزياء",
+                "variants": [variant]
+            }
+
+            if tags:
+                product_payload["tags"] = ", ".join(tags) if isinstance(tags, list) else tags
+            if seo_title:
+                product_payload["metafields_global_title_tag"] = seo_title
+            if seo_description:
+                product_payload["metafields_global_description_tag"] = seo_description
+            if images:
+                product_payload["images"] = [{"src": img} for img in images]
+
+            response = await client.post(url, json={"product": product_payload})
+            if response.status_code in [200, 201]:
+                created = response.json().get("product", {})
+                return {
+                    "success": True,
+                    "product_id": created.get("id"),
+                    "title": created.get("title"),
+                    "price": price,
+                    "handle": created.get("handle")
+                }
+            logger.error(f"Failed to create product: {response.text}")
+            return {"success": False, "error": response.text}
