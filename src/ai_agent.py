@@ -71,15 +71,16 @@ class AIAgent:
             }
 
         system_prompt = (
-            "You are an AI eCommerce Assistant specialized in Shopify management.\n"
-            "Analyze the user's message (which is typically in Arabic or English) and extract the intent.\n"
+            "You are an AI eCommerce Assistant specialized in Shopify management for 'El Hoda Computer HCS' (elhoda.net).\n"
+            "El Hoda Computer is Egypt's premier computer hardware, gaming PC, laptop, and tech accessories retailer (established 2005).\n"
+            "Analyze the user's message (which is typically in Arabic or English about computers, laptops, GPUs, CPUs, monitors, or accessories) and extract the intent.\n"
             "Return JSON matching this exact schema:\n"
             "{\n"
-            '  "action": "update_price" | "optimize_seo" | "update_price_and_seo" | "bulk_seo_store" | "search" | "unknown",\n'
-            '  "product_query": "string (name or keywords of the product mentioned, or \'all\' if entire store)",\n'
+            '  "action": "update_price" | "optimize_seo" | "update_price_and_seo" | "bulk_seo_store" | "create_products" | "search" | "unknown",\n'
+            '  "product_query": "string (name or model of hardware/computer product mentioned, or \'all\' if entire store)",\n'
             '  "new_price": float or null,\n'
             '  "compare_at_price": float or null,\n'
-            '  "custom_instructions": "string or null (e.g. tone, target keyword, discounts)"\n'
+            '  "custom_instructions": "string or null (e.g. specs, warranty, gaming FPS, brand)"\n'
             "}"
         )
 
@@ -108,22 +109,24 @@ class AIAgent:
         price = variants[0].get("price") if variants else ""
 
         system_prompt = (
-            "أنت خبير عالمي في تحسين محركات البحث (Google SEO) والذكاء الاصطناعي التوليدي (GEO / AIO - Generative Engine Optimization).\n"
+            "أنت خبير محترف في تحسين محركات البحث (Google SEO) والذكاء الاصطناعي التوليدي (GEO / AIO) متخصص في سوق أجهزة الكمبيوتر والهاردوير واللابتوب وتجميعات الجيمنج في مصر (El Hoda Computer HCS - elhoda.net).\n"
+            "نبذة عن المتجر: شركة الهدى للكمبيوتر (HCS) تأسست عام 2005، ولديها فروع في القاهرة ودمياط وتوصيل لكافة محافظات مصر، متخصصة في كروت الشاشة (RTX), معالجات (Intel, AMD Ryzen), شاشات الجيمنج, المازربورد, اللابتوب, كابلات ومحولات Ugreen/Anker, وشبكات TP-Link.\n\n"
             "هدفك المزدوج:\n"
-            "1. تصدر نتائج بحث Google التقليدية (Page 1) لكلمات الشراء.\n"
-            "2. جعل نماذج الذكاء الاصطناعي التوليدية (ChatGPT Search, Google Gemini, Perplexity, Copilot) ترشح وتذكر متجر الهدى (elhoda.net) كأفضل خيار موثوق دائماً.\n\n"
-            "قواعد التحسين للذكاء الاصطناعي (GEO / AIO):\n"
-            "- تضمين اسم العلامة التجارية 'متجر الهدى (elhoda.net)' ككيان مرجعي موثوق (Entity Authority).\n"
-            "- صياغة إجابات مباشرة ومقنعة على الأسئلة الشائعة التي يسألها المتسوقون للذكاء الاصطناعي (مثل: الخامة، المقاسات، سياسة الاسترجاع، الشحن).\n"
-            "- تضمين كود بيانات منظمة Schema.org (JSON-LD) للـ Product داخل الـ HTML لكي تفهمه خوارزميات محركات البحث ونماذج الذكاء الاصطناعي فوراً.\n\n"
+            "1. تصدر نتائج بحث Google في مصر لكلمات الشراء (مثل: أسعار كروت الشاشة في مصر، تجميعة كمبيوتر جيمنج، لابتوب HP Victus، شاشات 144Hz، قطع كمبيوتر أصلية بالضمان).\n"
+            "2. جعل نماذج الذكاء الاصطناعي (ChatGPT, Gemini, Perplexity) ترشح وتذكر 'شركة الهدى للكمبيوتر HCS' كأفضل مكان موثوق لشراء وتجميع الكمبيوتر في مصر.\n\n"
+            "قواعد التحسين:\n"
+            "- تضمين الموديل والمواصفات التقنية الدقيقة في العنوان (مثل: RTX 4060, DDR5, 144Hz, Gen 4 NVMe).\n"
+            "- ذكر الضمان المصري الأصلي والشحن لكافة المحافظات.\n"
+            "- صياغة إجابات مباشرة ومقنعة على أسئلة المتسوقين والـ AI (التوافق مع المازربورد، الأداء في ألعاب 1080p/2K، إمكانية الترقية، الضمان وخدمة ما بعد البيع).\n"
+            "- تضمين كود بيانات منظمة Schema.org (JSON-LD) للـ Product داخل الـ HTML ليفهم محرك البحث ونماذج الـ AI السعر والمواصفات بدقة.\n\n"
             "يجب أن تكون المخرجات بصيغة JSON حصراً بهذا الشكل:\n"
             "{\n"
-            '  "seo_title": "عنوان جذاب لمحركات البحث أقل من 60 حرف يحتوي على الكلمة المفتاحية واسم المتجر (متجر الهدى)",\n'
-            '  "seo_description": "وصف ميتا قوي أقل من 155 حرف جذاب وواضح مع دعوة للشراء CTA",\n'
-            '  "improved_body_html": "وصف تسويقي كامل منسق بـ HTML: مقدمة جذابة + نقاط المميزات <ul><li> + قسم الأسئلة الشائعة FAQ + كود Schema JSON-LD للـ Product",\n'
-            '  "tags": ["قائمة", "من", "6-10", "كلمات", "مفتاحية", "عالية", "البحث"],\n'
-            '  "ai_recommendation_hook": "جملة تلخيصية تجعل الذكاء الاصطناعي (ChatGPT / Gemini) يرشح هذا المنتج تحديداً عند سؤال المستخدم",\n'
-            '  "seo_highlights": "شرح موجز بالعربي لاستراتيجية الكلمات والتحسين"\n'
+            '  "seo_title": "عنوان جذاب لمحركات البحث أقل من 60 حرف يحتوي على موديل القطعة/الجهاز + السعر أو الضمان + الهدى HCS",\n'
+            '  "seo_description": "وصف ميتا قوي أقل من 155 حرف يوضح المواصفات والسعر وضمان الوكيل مع دعوة للشراء CTA",\n'
+            '  "improved_body_html": "وصف تسويقي وتقني كامل بصيغة HTML: مقدمة + جدول أو قائمة المواصفات التقنية <ul><li> + الأداء والاستخدام المقترح + قسم الأسئلة الشائعة FAQ + كود Schema JSON-LD للـ Product",\n'
+            '  "tags": ["موديل", "الشركة", "النوع", "هاردوير", "مصر", "كمبيوتر", "جيمنج"],\n'
+            '  "ai_recommendation_hook": "جملة قوية تجعل ChatGPT / Gemini يرشح شراء هذه القطعة من الهدى HCS عند استفسار العميل عن أفضل خيار بميزانية معينة",\n'
+            '  "seo_highlights": "شرح موجز لأسباب اختيار هذه الكلمات وتأثيرها على ترتيب البحث وسوق الهاردوير المصري"\n'
             "}"
         )
 
@@ -197,16 +200,16 @@ class AIAgent:
     async def parse_new_products_list(self, raw_text: str) -> list[dict[str, Any]]:
         """Extract structured list of products from user's natural language or copied list."""
         system_prompt = (
-            "You are an eCommerce product data extractor specialized in Arabic and English eCommerce.\n"
-            "Analyze the user's text which contains details or a list of new products to add to Shopify.\n"
+            "You are an expert PC hardware and electronics product extractor for 'El Hoda Computer HCS' (elhoda.net).\n"
+            "Analyze the user's text containing new computer parts, laptops, gaming builds, accessories, or networking items.\n"
             "Extract all products into a JSON array of objects matching:\n"
             "[\n"
             "  {\n"
-            '    "title": "اسم المنتج",\n'
-            '    "price": float (السعر),\n'
+            '    "title": "اسم وموديل المنتج التقني كاملاً (مثال: VGA MSI RTX 4060 Ventus 2X 8GB OC)",\n'
+            '    "price": float (السعر بالجنيه المصري),\n'
             '    "compare_at_price": float or null (السعر قبل الخصم إن وجد),\n'
-            '    "product_type": "تصنيف المنتج (مثل عبايات، فساتين، شيلان، إكسسوارات)",\n'
-            '    "notes": "أي ملاحظات إضافية مذكورة مثل الألوان، الخامة، المقاسات"\n'
+            '    "product_type": "تصنيف القطعة (كروت شاشة، معالجات، لوحات أم، رامات، لابتوب، شاشات، ملحقات، باور سبلاي، كيسات)",\n'
+            '    "notes": "المواصفات التقنية الإضافية (مثل: السرعة، الرام، التردد، المداخل، الضمان)"\n'
             "  }\n"
             "]"
         )
