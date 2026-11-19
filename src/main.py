@@ -13,6 +13,15 @@ from src.config import settings
 from src.shopify_client import ShopifyClient
 from src.ai_agent import AIAgent
 from src.telegram_bot import TelegramBotService
+from src.database import (
+    authenticate_user,
+    get_user_by_username,
+    list_users,
+    create_user,
+    delete_user,
+    log_activity,
+    get_activity_logs
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,13 +36,15 @@ LOGIN_HTML_PATH = BASE_DIR / "dashboard" / "templates" / "login.html"
 # Active sessions store in memory: token -> username
 SESSIONS: dict[str, str] = {}
 
-def get_current_user(request: Request) -> Optional[str]:
+def get_current_user(request: Request) -> Optional[dict[str, Any]]:
     token = request.cookies.get("session_token")
     if not token or token not in SESSIONS:
         return None
-    return SESSIONS[token]
+    username = SESSIONS[token]
+    user = get_user_by_username(username)
+    return user
 
-def require_auth(request: Request) -> str:
+def require_auth(request: Request) -> dict[str, Any]:
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -98,6 +109,12 @@ class OptimizeSeoRequest(BaseModel):
     product_id: int | str
     custom_instructions: Optional[str] = None
 
+class UserCreateReq(BaseModel):
+    username: str
+    password: str
+    name: str
+    role: str = "staff"
+
 # Routes
 @app.get("/login")
 async def login_page(request: Request):
@@ -107,12 +124,10 @@ async def login_page(request: Request):
 
 @app.post("/api/login")
 async def api_login(req: LoginRequest, response: Response):
-    users = settings.get_users_dict()
-    u = req.username.strip()
-    p = req.password.strip()
-    if u in users and users[u] == p:
+    user = authenticate_user(req.username, req.password)
+    if user:
         token = secrets.token_urlsafe(32)
-        SESSIONS[token] = u
+        SESSIONS[token] = user["username"]
         response.set_cookie(
             key="session_token",
             value=token,
@@ -120,11 +135,15 @@ async def api_login(req: LoginRequest, response: Response):
             samesite="lax",
             max_age=86400 * 7 # 7 days
         )
-        return {"success": True, "username": u}
+        log_activity(user["username"], "تسجيل دخول", f"تسجيل دخول ناجح للمستخدم {user['name']} ({user['role']})")
+        return {"success": True, "username": user["username"], "name": user["name"], "role": user["role"]}
     return {"success": False, "message": "اسم المستخدم أو كلمة المرور غير صحيحة"}
 
 @app.get("/logout")
 async def logout_view(request: Request):
+    user = get_current_user(request)
+    if user:
+        log_activity(user["username"], "تسجيل خروج", f"قام المستخدم {user['name']} بتسجيل الخروج")
     token = request.cookies.get("session_token")
     if token and token in SESSIONS:
         del SESSIONS[token]
@@ -137,7 +156,52 @@ async def me_view(request: Request):
     user = get_current_user(request)
     if not user:
         return {"authenticated": False}
-    return {"authenticated": True, "username": user}
+    return {
+        "authenticated": True,
+        "id": user.get("id"),
+        "username": user.get("username"),
+        "name": user.get("name"),
+        "role": user.get("role", "staff")
+    }
+
+@app.get("/api/users")
+async def get_users_list(request: Request):
+    user = require_auth(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="صلاحية المدير فقط")
+    return {"success": True, "users": list_users()}
+
+@app.post("/api/users")
+async def create_user_endpoint(req: UserCreateReq, request: Request):
+    user = require_auth(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="صلاحية المدير فقط")
+    
+    ok = create_user(req.username, req.password, req.name, req.role)
+    if ok:
+        log_activity(user["username"], "إضافة مستخدم", f"تم إنشاء مستخدم جديد: {req.username} ({req.name}) بصلاحية {req.role}")
+        return {"success": True, "message": "تمت إضافة المستخدم بنجاح"}
+    return {"success": False, "message": "اسم المستخدم موجود مسبقاً، يرجى اختيار اسم آخر"}
+
+@app.delete("/api/users/{user_id}")
+async def delete_user_endpoint(user_id: int, request: Request):
+    user = require_auth(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="صلاحية المدير فقط")
+    
+    ok = delete_user(user_id)
+    if ok:
+        log_activity(user["username"], "حذف مستخدم", f"تم حذف المستخدم ذو المعرف رقم {user_id}")
+        return {"success": True, "message": "تم حذف المستخدم بنجاح"}
+    return {"success": False, "message": "تعذر حذف المستخدم"}
+
+@app.get("/api/logs")
+async def get_logs_endpoint(request: Request, user_filter: Optional[str] = None, limit: int = 100):
+    user = require_auth(request)
+    # Admin can view all, staff sees only their own
+    username_filter = user_filter if user.get("role") == "admin" else user["username"]
+    logs = get_activity_logs(limit=limit, username_filter=username_filter)
+    return {"success": True, "logs": logs}
 
 @app.get("/")
 async def dashboard_view(request: Request):
@@ -237,32 +301,55 @@ async def get_products():
         return {"success": False, "message": str(e), "products": []}
 
 @app.post("/api/ai-command")
-async def execute_ai_command(req: AICommandRequest):
+async def execute_ai_command(req: AICommandRequest, request: Request):
     """Execute natural language command via AI Agent."""
+    user = require_auth(request)
     try:
         result = await ai_agent.execute_command(req.prompt)
+        log_activity(
+            username=user["username"],
+            action="أمر ذكاء اصطناعي",
+            details=f"طلب: {req.prompt} ➔ النتيجة: {result.get('message', '')[:120]}",
+            product_id=str(result.get("product_id") or ""),
+            product_title=result.get("product_title")
+        )
         return result
     except Exception as e:
         logger.exception("Error executing AI command")
+        log_activity(
+            username=user["username"],
+            action="أمر ذكاء اصطناعي (فشل)",
+            details=f"فشل تنفيذ الطلب '{req.prompt}': {str(e)}"
+        )
         return {"success": False, "message": str(e)}
 
 @app.post("/api/update-price")
-async def update_price(req: UpdatePriceRequest):
+async def update_price(req: UpdatePriceRequest, request: Request):
     """Directly update product price."""
+    user = require_auth(request)
     try:
         res = await shopify_client.update_product_price(
             product_id=req.product_id,
             new_price=req.new_price,
             compare_at_price=req.compare_at_price
         )
+        if res.get("success"):
+            log_activity(
+                username=user["username"],
+                action="تعديل سعر",
+                details=f"تعديل سعر منتج ({res.get('product_title')}) إلى {req.new_price} ج.م" + (f" (قبل الخصم: {req.compare_at_price})" if req.compare_at_price else ""),
+                product_id=str(req.product_id),
+                product_title=res.get("product_title")
+            )
         return res
     except Exception as e:
         logger.exception("Error updating price")
         return {"success": False, "error": str(e)}
 
 @app.post("/api/optimize-seo")
-async def optimize_seo(req: OptimizeSeoRequest):
+async def optimize_seo(req: OptimizeSeoRequest, request: Request):
     """Generate and apply AI SEO optimization for a product."""
+    user = require_auth(request)
     try:
         product = await shopify_client.get_product(req.product_id)
         if not product:
@@ -276,6 +363,14 @@ async def optimize_seo(req: OptimizeSeoRequest):
             tags=seo_data.get("tags"),
             body_html=seo_data.get("improved_body_html")
         )
+        if update_res.get("success"):
+            log_activity(
+                username=user["username"],
+                action="تحسين SEO",
+                details=f"تحسين سيو منتج: {product.get('title')} | العنوان: {seo_data.get('seo_title')}",
+                product_id=str(req.product_id),
+                product_title=product.get("title")
+            )
         return {
             "success": update_res.get("success", False),
             "seo": seo_data,
