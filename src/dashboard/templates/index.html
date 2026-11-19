@@ -105,8 +105,25 @@
             <div class="flex flex-wrap items-center gap-2 mt-3 text-xs text-slate-500">
                 <span class="font-semibold text-slate-600">أمثلة سريعة:</span>
                 <button type="button" class="sample-prompt bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md transition text-slate-700">«حدث سعر الطرحة لـ 95 جنيه»</button>
-                <button type="button" class="sample-prompt bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md transition text-slate-700">«حسن السيو وأضف كلمات مفتاحية لأحدث المنتجات»</button>
+                <button type="button" class="sample-prompt bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md transition text-slate-700">«حسن سيو الموقع كله لمحركات البحث والذكاء الاصطناعي»</button>
             </div>
+        </section>
+
+        <!-- Bulk SEO Optimization Banner -->
+        <section class="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-2xl shadow-lg p-6 text-white flex flex-col md:flex-row items-center justify-between gap-4 border border-emerald-500/30">
+            <div class="space-y-1.5 text-right">
+                <span class="px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 text-[11px] font-bold border border-emerald-400/30 inline-flex items-center gap-1">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> محرك التحسين المزدوج (Google SEO + Generative AI)
+                </span>
+                <h3 class="text-base sm:text-lg font-bold">تحسين سيو المتجر بالكامل وتصدّر ترشيحات الذكاء الاصطناعي (GEO)</h3>
+                <p class="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                    يقوم الوكيل بفحص منتجات متجر الهدى وإعادة صياغة العناوين والأوصاف، وإضافة أكواد Schema والبيانات المنظمة لكي تتصدر في بحث Google وتجعل ChatGPT و Gemini و Perplexity يرشحون متجرك مباشرة للمتسوقين.
+                </p>
+            </div>
+            <button onclick="startBulkSeoOptimization()" class="px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 active:scale-95 text-white font-extrabold rounded-xl text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-rocket text-sm"></i>
+                تحسين سيو المتجر كاملاً الآن 🚀
+            </button>
         </section>
 
         <!-- Stats Overview -->
@@ -278,6 +295,30 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Bulk SEO Progress Modal -->
+    <div id="bulkSeoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl border border-slate-200 text-center">
+            <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl mb-4">
+                <i id="bulkSpinnerIcon" class="fa-solid fa-wand-magic-sparkles animate-bounce"></i>
+            </div>
+            <h3 id="bulkModalTitle" class="text-lg font-bold text-slate-800 mb-1">جارِ فحص وتحسين سيو المتجر بالكامل</h3>
+            <p id="bulkCurrentProduct" class="text-xs text-slate-500 mb-6 font-semibold">جارِ تهيئة الاتصال بـ Shopify...</p>
+
+            <div class="w-full bg-slate-100 rounded-full h-3.5 mb-3 overflow-hidden p-0.5 border border-slate-200">
+                <div id="bulkProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-500 h-2.5 rounded-full transition-all duration-300" style="width: 5%"></div>
+            </div>
+
+            <div class="flex justify-between items-center text-xs font-mono text-slate-500 mb-6">
+                <span id="bulkProgressText">0 / 0</span>
+                <span id="bulkProgressPercentage" class="font-bold text-emerald-600">5%</span>
+            </div>
+
+            <button id="closeBulkModalBtn" onclick="closeBulkSeoModal()" class="hidden px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs">
+                إغلاق وفتح المنتجات
+            </button>
         </div>
     </div>
 
@@ -490,6 +531,73 @@
                 Swal.fire('خطأ', err.message, 'error');
             }
         });
+
+        let bulkPollTimer = null;
+
+        async function startBulkSeoOptimization() {
+            const conf = await Swal.fire({
+                title: 'تحسين سيو المتجر بالكامل (GEO / AIO)',
+                text: 'سيقوم الوكيل بفحص جميع منتجات متجر الهدى وإعادة صياغة العناوين والأوصاف، والكلمات المفتاحية، وإضافة كود Schema ليتم تصدر نتائج بحث Google وترشيحات نماذج الذكاء الاصطناعي. هل تريد البدء؟',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'نعم، ابدأ التحسين الشامل 🚀',
+                cancelButtonText: 'إلغاء'
+            });
+
+            if (!conf.isConfirmed) return;
+
+            document.getElementById('bulkSeoModal').classList.remove('hidden');
+            document.getElementById('closeBulkModalBtn').classList.add('hidden');
+            document.getElementById('bulkModalTitle').innerText = 'جارِ فحص وتحسين سيو المتجر بالكامل';
+            document.getElementById('bulkCurrentProduct').innerText = 'جارِ البدء بالمنتجات...';
+            document.getElementById('bulkProgressBar').style.width = '5%';
+            document.getElementById('bulkProgressPercentage').innerText = '5%';
+
+            try {
+                const res = await fetch('/api/bulk-seo', { method: 'POST' });
+                const data = await res.json();
+                if (!data.success && data.message.includes('قيد التنفيذ')) {
+                    // Already running, just poll
+                }
+                pollBulkProgress();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function pollBulkProgress() {
+            if (bulkPollTimer) clearInterval(bulkPollTimer);
+            bulkPollTimer = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/bulk-seo-status');
+                    const data = await res.json();
+                    if (data.total > 0) {
+                        const percent = Math.min(100, Math.round((data.processed / data.total) * 100));
+                        document.getElementById('bulkProgressBar').style.width = `${percent}%`;
+                        document.getElementById('bulkProgressPercentage').innerText = `${percent}%`;
+                        document.getElementById('bulkProgressText').innerText = `${data.processed} / ${data.total}`;
+                        document.getElementById('bulkCurrentProduct').innerText = `المنتج الحالي: ${data.current_product || 'جارِ المعالجة...'}`;
+                    }
+
+                    if (data.status === 'completed' || data.status === 'idle') {
+                        clearInterval(bulkPollTimer);
+                        document.getElementById('bulkModalTitle').innerText = '🎉 اكتمل تحسين سيو المتجر بنجاح!';
+                        document.getElementById('bulkCurrentProduct').innerText = `تم تحسين ${data.optimized_count || data.processed || 0} منتج وفق معايير Google و ChatGPT و Gemini.`;
+                        document.getElementById('bulkProgressBar').style.width = '100%';
+                        document.getElementById('bulkProgressPercentage').innerText = '100%';
+                        document.getElementById('closeBulkModalBtn').classList.remove('hidden');
+                        loadProducts();
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }, 2000);
+        }
+
+        function closeBulkSeoModal() {
+            if (bulkPollTimer) clearInterval(bulkPollTimer);
+            document.getElementById('bulkSeoModal').classList.add('hidden');
+        }
 
         let currentUserRole = 'staff';
 

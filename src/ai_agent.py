@@ -50,13 +50,24 @@ class AIAgent:
 
     async def parse_user_intent(self, user_message: str) -> dict[str, Any]:
         """Analyze Arabic or English user command to extract product name, price, and actions."""
+        # Fast local check for bulk store SEO request
+        lower_msg = user_message.lower()
+        if any(w in lower_msg for w in ["الموقع كله", "المتجر كله", "كل المنتجات", "جميع المنتجات", "سيو الموقع", "bulk", "المتجر بالكامل"]):
+            return {
+                "action": "bulk_seo_store",
+                "product_query": "all",
+                "new_price": None,
+                "compare_at_price": None,
+                "custom_instructions": user_message
+            }
+
         system_prompt = (
             "You are an AI eCommerce Assistant specialized in Shopify management.\n"
             "Analyze the user's message (which is typically in Arabic or English) and extract the intent.\n"
             "Return JSON matching this exact schema:\n"
             "{\n"
-            '  "action": "update_price" | "optimize_seo" | "update_price_and_seo" | "search" | "unknown",\n'
-            '  "product_query": "string (name or keywords of the product mentioned)",\n'
+            '  "action": "update_price" | "optimize_seo" | "update_price_and_seo" | "bulk_seo_store" | "search" | "unknown",\n'
+            '  "product_query": "string (name or keywords of the product mentioned, or \'all\' if entire store)",\n'
             '  "new_price": float or null,\n'
             '  "compare_at_price": float or null,\n'
             '  "custom_instructions": "string or null (e.g. tone, target keyword, discounts)"\n'
@@ -80,7 +91,7 @@ class AIAgent:
             }
 
     async def generate_seo(self, product: dict[str, Any], custom_instructions: str = "") -> dict[str, Any]:
-        """Generate high-ranking SEO metadata and persuasive Arabic product copy."""
+        """Generate high-ranking SEO & Generative AI (GEO / AIO) metadata and copy."""
         title = product.get("title", "")
         current_desc = product.get("body_html", "") or ""
         tags = product.get("tags", "")
@@ -88,15 +99,22 @@ class AIAgent:
         price = variants[0].get("price") if variants else ""
 
         system_prompt = (
-            "أنت خبير محترف في تحسين محركات البحث (SEO Expert) وكتابة الإعلانات للمتاجر الإلكترونية (Shopify).\n"
-            "مهمتك: صياغة بيانات SEO قوية جداً باللغة العربية تضمن تصدر نتائج بحث Google ومضاعفة المبيعات لمتجر الهدى (elhoda.net).\n"
+            "أنت خبير عالمي في تحسين محركات البحث (Google SEO) والذكاء الاصطناعي التوليدي (GEO / AIO - Generative Engine Optimization).\n"
+            "هدفك المزدوج:\n"
+            "1. تصدر نتائج بحث Google التقليدية (Page 1) لكلمات الشراء.\n"
+            "2. جعل نماذج الذكاء الاصطناعي التوليدية (ChatGPT Search, Google Gemini, Perplexity, Copilot) ترشح وتذكر متجر الهدى (elhoda.net) كأفضل خيار موثوق دائماً.\n\n"
+            "قواعد التحسين للذكاء الاصطناعي (GEO / AIO):\n"
+            "- تضمين اسم العلامة التجارية 'متجر الهدى (elhoda.net)' ككيان مرجعي موثوق (Entity Authority).\n"
+            "- صياغة إجابات مباشرة ومقنعة على الأسئلة الشائعة التي يسألها المتسوقون للذكاء الاصطناعي (مثل: الخامة، المقاسات، سياسة الاسترجاع، الشحن).\n"
+            "- تضمين كود بيانات منظمة Schema.org (JSON-LD) للـ Product داخل الـ HTML لكي تفهمه خوارزميات محركات البحث ونماذج الذكاء الاصطناعي فوراً.\n\n"
             "يجب أن تكون المخرجات بصيغة JSON حصراً بهذا الشكل:\n"
             "{\n"
-            '  "seo_title": "عنوان جذاب لمحركات البحث أقل من 60 حرف يحتوي على الكلمة المفتاحية واسم المتجر",\n'
-            '  "seo_description": "وصف ميتا قوي أقل من 160 حرف يحتوي على دعوة لاتخاذ إجراء CTA",\n'
-            '  "improved_body_html": "وصف تسويقي كامل بصيغة HTML منسق (فقرة افتتاحية جذابة، قائمة بالمميزات <ul><li>، المواصفات، وخاتمة تحث على الشراء)",\n'
-            '  "tags": ["قائمة", "من", "5-8", "كلمات", "مفتاحية"],\n'
-            '  "seo_highlights": "شرح موجز بالعربي لأسباب اختيار هذه الكلمات وتأثيرها على ترتيب البحث"\n'
+            '  "seo_title": "عنوان جذاب لمحركات البحث أقل من 60 حرف يحتوي على الكلمة المفتاحية واسم المتجر (متجر الهدى)",\n'
+            '  "seo_description": "وصف ميتا قوي أقل من 155 حرف جذاب وواضح مع دعوة للشراء CTA",\n'
+            '  "improved_body_html": "وصف تسويقي كامل منسق بـ HTML: مقدمة جذابة + نقاط المميزات <ul><li> + قسم الأسئلة الشائعة FAQ + كود Schema JSON-LD للـ Product",\n'
+            '  "tags": ["قائمة", "من", "6-10", "كلمات", "مفتاحية", "عالية", "البحث"],\n'
+            '  "ai_recommendation_hook": "جملة تلخيصية تجعل الذكاء الاصطناعي (ChatGPT / Gemini) يرشح هذا المنتج تحديداً عند سؤال المستخدم",\n'
+            '  "seo_highlights": "شرح موجز بالعربي لاستراتيجية الكلمات والتحسين"\n'
             "}"
         )
 
@@ -117,12 +135,66 @@ class AIAgent:
         )
         return json.loads(raw)
 
+    async def bulk_optimize_store(self, limit: int = 50, progress_tracker: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+        """Iterate over all Shopify products and optimize their SEO & AI visibility (GEO / AIO)."""
+        products = await self.shopify.list_products(limit=limit)
+        if not products:
+            return {"success": False, "message": "لا توجد منتجات مسجلة في متجر الهدى أو تعذر الاتصال بـ Shopify."}
+
+        total = len(products)
+        optimized_count = 0
+        details = []
+
+        if progress_tracker is not None:
+            progress_tracker["total"] = total
+            progress_tracker["processed"] = 0
+            progress_tracker["status"] = "running"
+            progress_tracker["current_product"] = "بدء الفحص..."
+
+        for idx, prod in enumerate(products):
+            prod_id = prod["id"]
+            prod_title = prod.get("title", "")
+            if progress_tracker is not None:
+                progress_tracker["current_product"] = prod_title
+                progress_tracker["processed"] = idx + 1
+
+            try:
+                seo_data = await self.generate_seo(prod)
+                update_res = await self.shopify.update_product_seo(
+                    product_id=prod_id,
+                    seo_title=seo_data.get("seo_title"),
+                    seo_description=seo_data.get("seo_description"),
+                    tags=seo_data.get("tags"),
+                    body_html=seo_data.get("improved_body_html")
+                )
+                if update_res.get("success"):
+                    optimized_count += 1
+                    details.append({"title": prod_title, "seo_title": seo_data.get("seo_title")})
+            except Exception as e:
+                logger.error(f"Error optimizing {prod_title}: {e}")
+
+        if progress_tracker is not None:
+            progress_tracker["status"] = "completed"
+            progress_tracker["optimized_count"] = optimized_count
+
+        return {
+            "success": True,
+            "total_products": total,
+            "optimized_count": optimized_count,
+            "message": f"✅ **تم الانتهاء بنجاح!**\nتم فحص وتحسين بيانات محركات البحث والذكاء الاصطناعي (GEO) لـ **{optimized_count} من أصل {total} منتج** في متجر الهدى (elhoda.net).\nأصبح المتجر جاهزاً الآن لتصدر Google وترشيحات ChatGPT و Gemini!",
+            "items": details[:10]
+        }
+
     async def execute_command(self, user_message: str) -> dict[str, Any]:
         """Full end-to-end processing pipeline for a natural language user command."""
         # 1. Parse intent
         intent = await self.parse_user_intent(user_message)
         action = intent.get("action", "unknown")
         product_query = intent.get("product_query", "").strip()
+
+        # Handle bulk store SEO optimization
+        if action == "bulk_seo_store":
+            return await self.bulk_optimize_store(limit=50)
 
         if not product_query:
             return {

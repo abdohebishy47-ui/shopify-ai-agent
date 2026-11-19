@@ -380,6 +380,48 @@ async def optimize_seo(req: OptimizeSeoRequest, request: Request):
         logger.exception("Error optimizing SEO")
         return {"success": False, "error": str(e)}
 
+# Bulk SEO background state
+BULK_TRACKER: dict[str, Any] = {
+    "status": "idle",
+    "total": 0,
+    "processed": 0,
+    "current_product": "",
+    "optimized_count": 0
+}
+
+@app.post("/api/bulk-seo")
+async def start_bulk_seo(request: Request):
+    """Trigger whole-store SEO & GEO optimization in the background."""
+    user = require_auth(request)
+    global BULK_TRACKER
+    if BULK_TRACKER.get("status") == "running":
+        return {"success": False, "message": "هناك عملية تحسين شاملة قيد التنفيذ حالياً بالفعل."}
+
+    log_activity(
+        username=user["username"],
+        action="تحسين سيو المتجر بالكامل",
+        details="بدء عملية تحسين محركات البحث والذكاء الاصطناعي (GEO) لكافة منتجات المتجر"
+    )
+
+    async def _run_bulk():
+        try:
+            res = await ai_agent.bulk_optimize_store(limit=50, progress_tracker=BULK_TRACKER)
+            log_activity(
+                username=user["username"],
+                action="اكتمال السيو الشامل",
+                details=f"تم الانتهاء بنجاح من تحسين {res.get('optimized_count', 0)} منتج"
+            )
+        except Exception as e:
+            logger.error(f"Bulk SEO error: {e}")
+            BULK_TRACKER["status"] = "failed"
+
+    asyncio.create_task(_run_bulk())
+    return {"success": True, "message": "تم بدء فحص وتحسين المتجر بالكامل بنجاح في الخلفية!"}
+
+@app.get("/api/bulk-seo-status")
+async def get_bulk_seo_status():
+    return BULK_TRACKER
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "store": settings.clean_store_domain()}
