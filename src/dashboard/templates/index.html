@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم الـ AI Agent | متجر الهدى elhoda.net</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Cairo -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <!-- Header Navigation -->
+    <header class="bg-gradient-to-r from-emerald-700 via-teal-800 to-slate-900 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <div class="w-11 h-11 rounded-xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center text-2xl shadow-inner">
+                    🛍️
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">مساعد الذكاء الاصطناعي | متجر الهدى</h1>
+                    <p class="text-xs text-emerald-200 flex items-center gap-1.5 mt-0.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        متصل بمتجر: <span class="font-mono underline">elhoda.net</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="openSettingsModal()" class="px-3.5 py-2 text-sm bg-white/10 hover:bg-white/20 transition rounded-lg border border-white/20 flex items-center gap-2">
+                    <i class="fa-solid fa-gear"></i>
+                    الإعدادات ومفاتيح الربط
+                </button>
+                <a href="https://elhoda.net" target="_blank" class="px-3.5 py-2 text-sm bg-white/10 hover:bg-white/20 transition rounded-lg border border-white/20 flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    زيارة المتجر
+                </a>
+                <span class="px-3.5 py-1.5 text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded-full flex items-center gap-1.5">
+                    <i class="fa-solid fa-robot"></i> Gemini 2.5 Flash
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+
+        <!-- Top Interactive AI Command Console -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 relative overflow-hidden">
+            <div class="absolute -top-12 -left-12 w-48 h-48 bg-emerald-50 rounded-full blur-2xl pointer-events-none"></div>
+            
+            <div class="flex items-center gap-3 mb-4">
+                <div class="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
+                    <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800">إصدار أوامر الذكاء الاصطناعي الفورية</h2>
+                    <p class="text-xs text-slate-500">اكتب طلبك باللغة الطبيعية (تعديل أسعار، تحسين سيو، أو كلاهما) وسيقوم الوكيل بتنفيذه في شوبيفاي.</p>
+                </div>
+            </div>
+
+            <form id="aiPromptForm" class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-comment-dots absolute right-4 top-4 text-slate-400"></i>
+                    <input 
+                        type="text" 
+                        id="userPromptInput"
+                        placeholder="مثال: حدث سعر عباية الهدى لـ 450 جنيه مع كتابة وصف سيو احترافي..." 
+                        class="w-full pr-11 pl-4 py-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none transition text-sm"
+                        required
+                    />
+                </div>
+                <button 
+                    type="submit" 
+                    id="submitPromptBtn"
+                    class="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-sm whitespace-nowrap"
+                >
+                    <i class="fa-solid fa-bolt"></i>
+                    تنفيذ الأمر
+                </button>
+            </form>
+
+            <!-- Quick Suggestions -->
+            <div class="flex flex-wrap items-center gap-2 mt-3 text-xs text-slate-500">
+                <span class="font-semibold text-slate-600">أمثلة سريعة:</span>
+                <button type="button" class="sample-prompt bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md transition text-slate-700">«حدث سعر الطرحة لـ 95 جنيه»</button>
+                <button type="button" class="sample-prompt bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md transition text-slate-700">«حسن السيو وأضف كلمات مفتاحية لأحدث المنتجات»</button>
+            </div>
+        </section>
+
+        <!-- Stats Overview -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <span class="text-xs font-semibold text-slate-400">إجمالي المنتجات</span>
+                    <h3 id="statTotalProducts" class="text-2xl font-extrabold text-slate-800 mt-1">--</h3>
+                </div>
+                <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <span class="text-xs font-semibold text-slate-400">جاهزية الـ SEO</span>
+                    <h3 id="statSeoHealth" class="text-2xl font-extrabold text-emerald-600 mt-1">--</h3>
+                </div>
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <span class="text-xs font-semibold text-slate-400">حالة الربط مع Shopify</span>
+                    <h3 id="statShopifyStatus" class="text-sm font-bold text-slate-700 mt-2">جارِ الفحص...</h3>
+                </div>
+                <div class="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-brands fa-shopify"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <span class="text-xs font-semibold text-slate-400">بوت تليجرام</span>
+                    <h3 id="statTelegramStatus" class="text-sm font-bold text-slate-700 mt-2">نشط</h3>
+                </div>
+                <div class="w-12 h-12 bg-sky-50 text-sky-500 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-brands fa-telegram"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Products Management Table -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+            <div class="p-6 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800">قائمة منتجات المتجر</h2>
+                    <p class="text-xs text-slate-500">تحكم بأسعار المنتجات والـ SEO مباشرة بضغطة زر واحدة.</p>
+                </div>
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <input 
+                        type="text" 
+                        id="tableSearchInput" 
+                        placeholder="ابحث بالاسم أو التصنيف..." 
+                        class="px-3.5 py-2 border border-slate-300 rounded-xl text-xs w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <button id="refreshProductsBtn" class="p-2 border border-slate-300 hover:bg-slate-50 rounded-xl text-slate-600 transition" title="تحديث القائمة">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-right text-sm">
+                    <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 text-xs">
+                        <tr>
+                            <th class="p-4">المنتج</th>
+                            <th class="p-4">السعر الحالي</th>
+                            <th class="p-4">عنوان السيو (Meta Title)</th>
+                            <th class="p-4">حالة الـ SEO</th>
+                            <th class="p-4 text-center">الإجراءات الذكية</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTableBody" class="divide-y divide-slate-100">
+                        <tr>
+                            <td colspan="5" class="p-8 text-center text-slate-400">
+                                <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-600"></i>
+                                <p>جارِ تحميل منتجات المتجر...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg">
+                        <i class="fa-solid fa-key"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-800">إعدادات ومفاتيح ربط المتجر</h3>
+                </div>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="settingsForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        رابط متجر شوبيفاي (Store Domain):
+                    </label>
+                    <input type="text" id="settingStoreUrl" value="elhoda.net" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 font-mono" />
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-bold text-slate-700">
+                            Shopify Admin API Access Token:
+                        </label>
+                        <span id="badgeShopifyToken" class="text-[10px] px-2 py-0.5 rounded font-semibold bg-slate-100 text-slate-500">غير مسجل</span>
+                    </div>
+                    <input type="password" id="settingShopifyToken" placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxx" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 font-mono" />
+                    <p class="text-[11px] text-slate-400 mt-1">من لوحة تحكم Shopify: Settings ➔ Apps ➔ Develop apps ➔ Admin API access token</p>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-bold text-slate-700">
+                            Google Gemini API Key (مجاني):
+                        </label>
+                        <span id="badgeGeminiKey" class="text-[10px] px-2 py-0.5 rounded font-semibold bg-slate-100 text-slate-500">غير مسجل</span>
+                    </div>
+                    <input type="password" id="settingGeminiKey" placeholder="AIzaSyxxxxxxxxxxxxxxxxxxxxxxx" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 font-mono" />
+                    <p class="text-[11px] text-slate-400 mt-1">من موقع <a href="https://aistudio.google.com/" target="_blank" class="text-emerald-600 underline">aistudio.google.com</a></p>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-bold text-slate-700">
+                            توكن بوت تيليجرام (Telegram Bot Token - اختياري):
+                        </label>
+                        <span id="badgeTelegramToken" class="text-[10px] px-2 py-0.5 rounded font-semibold bg-slate-100 text-slate-500">غير مسجل</span>
+                    </div>
+                    <input type="password" id="settingTelegramToken" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 font-mono" />
+                    <p class="text-[11px] text-slate-400 mt-1">من بوت @BotFather في تيليجرام</p>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeSettingsModal()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-xl text-xs hover:bg-slate-50">إلغاء</button>
+                    <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow flex items-center gap-1.5">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        حفظ وتفعيل المفاتيح فوراً
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Price Edit Modal -->
+    <div id="priceModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <h3 class="text-lg font-bold text-slate-800 mb-1">تعديل سعر المنتج</h3>
+            <p id="modalProductTitle" class="text-xs text-slate-500 mb-4 font-semibold"></p>
+
+            <form id="priceUpdateForm" class="space-y-4">
+                <input type="hidden" id="modalProductId" />
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">السعر الجديد (ج.م):</label>
+                    <input type="number" step="0.01" id="modalNewPrice" required class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">سعر قبل الخصم (اختياري للعروض):</label>
+                    <input type="number" step="0.01" id="modalComparePrice" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="مثال: 550" />
+                </div>
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" onclick="closePriceModal()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-xl text-xs hover:bg-slate-50">إلغاء</button>
+                    <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow">حفظ السعر في شوبيفاي</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let allProducts = [];
+
+        // Sample prompt click
+        document.querySelectorAll('.sample-prompt').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const text = btn.innerText.replace(/[«»]/g, '');
+                document.getElementById('userPromptInput').value = text;
+                document.getElementById('userPromptInput').focus();
+            });
+        });
+
+        // Settings Modal Handlers
+        async function openSettingsModal() {
+            try {
+                const res = await fetch('/api/settings');
+                const data = await res.json();
+                if (data.shopify_store_url) {
+                    document.getElementById('settingStoreUrl').value = data.shopify_store_url;
+                }
+                updateBadge('badgeShopifyToken', data.has_shopify_token);
+                updateBadge('badgeGeminiKey', data.has_gemini_key);
+                updateBadge('badgeTelegramToken', data.has_telegram_token);
+            } catch (e) {
+                console.error(e);
+            }
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function updateBadge(id, isSet) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (isSet) {
+                el.innerText = 'مفعل وجاهز ✅';
+                el.className = 'text-[10px] px-2 py-0.5 rounded font-semibold bg-emerald-100 text-emerald-700';
+            } else {
+                el.innerText = 'غير مسجل ⚠️';
+                el.className = 'text-[10px] px-2 py-0.5 rounded font-semibold bg-amber-100 text-amber-700';
+            }
+        }
+
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                shopify_store_url: document.getElementById('settingStoreUrl').value.trim(),
+                shopify_token: document.getElementById('settingShopifyToken').value.trim() || null,
+                gemini_key: document.getElementById('settingGeminiKey').value.trim() || null,
+                telegram_token: document.getElementById('settingTelegramToken').value.trim() || null
+            };
+
+            Swal.fire({ title: 'جارِ حفظ وتفعيل المفاتيح...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                closeSettingsModal();
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'تم الحفظ والربط بنجاح!',
+                        text: 'تم تفعيل المفاتيح وتحديث الاتصال مع المتجر.'
+                    });
+                    loadProducts();
+                } else {
+                    Swal.fire('خطأ', data.message || 'حدث خطأ أثناء الحفظ', 'error');
+                }
+            } catch (err) {
+                Swal.fire('خطأ', err.message, 'error');
+            }
+        });
+
+        async function loadProducts() {
+            try {
+                const res = await fetch('/api/products');
+                const data = await res.json();
+                if (data.success) {
+                    allProducts = data.products || [];
+                    renderProducts(allProducts);
+                    updateStats(data);
+                } else {
+                    document.getElementById('productsTableBody').innerHTML = `
+                        <tr><td colspan="5" class="p-8 text-center text-slate-600">
+                            <div class="max-w-md mx-auto space-y-3">
+                                <i class="fa-solid fa-key text-3xl text-amber-500"></i>
+                                <h4 class="font-bold text-slate-800">بحاجة لمفتاح Shopify Admin Access Token</h4>
+                                <p class="text-xs text-slate-500">قم بإضافة مفتاح الربط الخاص بمتجر elhoda.net لكي يتم جلب المنتجات وتحديث الأسعار ومحركات البحث.</p>
+                                <button onclick="openSettingsModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow">
+                                    <i class="fa-solid fa-gear"></i> إدخال المفاتيح الآن
+                                </button>
+                            </div>
+                        </td></tr>
+                    `;
+                    document.getElementById('statShopifyStatus').innerHTML = '<span class="text-amber-600 font-bold">بانتظار المفتاح ⚠️</span>';
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderProducts(products) {
+            const tbody = document.getElementById('productsTableBody');
+            if (!products.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400">لا توجد منتجات مسجلة حتى الآن</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = products.map(p => {
+                const variant = (p.variants && p.variants[0]) || {};
+                const price = variant.price || '0';
+                const hasSeo = Boolean(p.metafields_global_title_tag || p.metafields_global_description_tag);
+                const seoBadge = hasSeo
+                    ? '<span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full">محسّن ✅</span>'
+                    : '<span class="px-2.5 py-1 bg-amber-100 text-amber-800 text-[11px] font-bold rounded-full">يحتاج تحسين ⚠️</span>';
+
+                const imgUrl = (p.images && p.images[0]?.src) || 'https://via.placeholder.com/60?text=Shopify';
+
+                return `
+                    <tr class="hover:bg-slate-50/70 transition">
+                        <td class="p-4 flex items-center gap-3">
+                            <img src="${imgUrl}" class="w-12 h-12 object-cover rounded-lg border border-slate-200" alt="${p.title}" />
+                            <div>
+                                <h4 class="font-bold text-slate-800 line-clamp-1">${p.title}</h4>
+                                <span class="text-[11px] text-slate-400">ID: ${p.id}</span>
+                            </div>
+                        </td>
+                        <td class="p-4 font-mono font-bold text-slate-700">${price} ج.م</td>
+                        <td class="p-4 text-xs text-slate-500 max-w-xs truncate">${p.metafields_global_title_tag || '—'}</td>
+                        <td class="p-4">${seoBadge}</td>
+                        <td class="p-4 text-center">
+                            <div class="inline-flex items-center gap-1.5">
+                                <button onclick="openPriceModal('${p.id}', '${escapeQuotes(p.title)}', '${price}')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition" title="تعديل السعر">
+                                    <i class="fa-solid fa-tag text-emerald-600"></i> السعر
+                                </button>
+                                <button onclick="optimizeProductSeo('${p.id}', '${escapeQuotes(p.title)}')" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition" title="تحسين السيو بالذكاء الاصطناعي">
+                                    <i class="fa-solid fa-sparkles"></i> تحسين SEO
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateStats(data) {
+            document.getElementById('statTotalProducts').innerText = allProducts.length;
+            const optimized = allProducts.filter(p => p.metafields_global_title_tag).length;
+            const percentage = allProducts.length ? Math.round((optimized / allProducts.length) * 100) : 0;
+            document.getElementById('statSeoHealth').innerText = `${percentage}%`;
+            document.getElementById('statShopifyStatus').innerHTML = '<span class="text-emerald-600 font-bold">متصل بـ elhoda.net ✅</span>';
+        }
+
+        function escapeQuotes(str) {
+            return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        }
+
+        // Price Modal
+        function openPriceModal(id, title, currentPrice) {
+            document.getElementById('modalProductId').value = id;
+            document.getElementById('modalProductTitle').innerText = title;
+            document.getElementById('modalNewPrice').value = currentPrice;
+            document.getElementById('modalComparePrice').value = '';
+            document.getElementById('priceModal').classList.remove('hidden');
+        }
+
+        function closePriceModal() {
+            document.getElementById('priceModal').classList.add('hidden');
+        }
+
+        document.getElementById('priceUpdateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('modalProductId').value;
+            const price = document.getElementById('modalNewPrice').value;
+            const compare = document.getElementById('modalComparePrice').value;
+
+            Swal.fire({ title: 'جارِ تحديث السعر في Shopify...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const res = await fetch('/api/update-price', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ product_id: id, new_price: price, compare_at_price: compare || null })
+                });
+                const data = await res.json();
+                closePriceModal();
+                if (data.success) {
+                    Swal.fire('تم بنجاح!', 'تم تحديث السعر في متجر شوبيفاي بنجاح.', 'success');
+                    loadProducts();
+                } else {
+                    Swal.fire('خطأ', data.error || 'تعذر التحديث', 'error');
+                }
+            } catch (err) {
+                Swal.fire('خطأ', err.message, 'error');
+            }
+        });
+
+        // AI Command Form
+        document.getElementById('aiPromptForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const prompt = document.getElementById('userPromptInput').value.trim();
+            if (!prompt) return;
+
+            Swal.fire({
+                title: 'الـ AI يفكر وينفذ الأمر...',
+                text: 'جارِ فحص المنتج وتحديث شوبيفاي والسيو',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const res = await fetch('/api/ai-command', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ prompt })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'تم تنفيذ الأمر!',
+                        html: `<div class="text-right whitespace-pre-line text-sm">${data.message}</div>`
+                    });
+                    document.getElementById('userPromptInput').value = '';
+                    loadProducts();
+                } else {
+                    const isKeyError = (data.message || '').includes('GEMINI_API_KEY');
+                    Swal.fire({
+                        icon: 'warning',
+                        title: isKeyError ? 'مفتاح الذكاء الاصطناعي مطلوب' : 'تنبيه',
+                        text: isKeyError ? 'يرجى إدخال مفتاح Gemini API Key لتفعيل الذكاء الاصطناعي.' : data.message,
+                        showCancelButton: isKeyError,
+                        confirmButtonText: isKeyError ? 'إدخال المفتاح الآن' : 'حسناً',
+                        cancelButtonText: 'إلغاء'
+                    }).then((result) => {
+                        if (isKeyError && result.isConfirmed) {
+                            openSettingsModal();
+                        }
+                    });
+                }
+            } catch (err) {
+                Swal.fire('خطأ', err.message, 'error');
+            }
+        });
+
+        // Optimize SEO directly
+        async function optimizeProductSeo(id, title) {
+            const confirm = await Swal.fire({
+                title: 'تحسين سيو المنتج',
+                text: `هل تريد من الذكاء الاصطناعي توليد وصياغة أفضل كلمات مفتاحية ووصف SEO لمنتج: "${title}" وتطبيقها فوراً في شوبيفاي؟`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'نعم، حسّن السيو الآن 🚀',
+                cancelButtonText: 'إلغاء'
+            });
+
+            if (!confirm.isConfirmed) return;
+
+            Swal.fire({
+                title: 'جارِ صياغة السيو بواسطة Gemini AI...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const res = await fetch('/api/optimize-seo', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ product_id: id })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'تم تحسين الـ SEO في شوبيفاي!',
+                        html: `
+                            <div class="text-right text-sm space-y-2">
+                                <p><strong>العنوان (Title):</strong> ${data.seo.seo_title}</p>
+                                <p><strong>الوصف (Meta Description):</strong> ${data.seo.seo_description}</p>
+                                <p><strong>الكلمات المفتاحية:</strong> ${data.seo.tags.join(', ')}</p>
+                            </div>
+                        `
+                    });
+                    loadProducts();
+                } else {
+                    Swal.fire('خطأ', data.error || 'تعذر تحسين السيو', 'error');
+                }
+            } catch (err) {
+                Swal.fire('خطأ', err.message, 'error');
+            }
+        }
+
+        // Table search filter
+        document.getElementById('tableSearchInput').addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase();
+            const filtered = allProducts.filter(p => p.title.toLowerCase().includes(q));
+            renderProducts(filtered);
+        });
+
+        document.getElementById('refreshProductsBtn').addEventListener('click', loadProducts);
+
+        // Initial load
+        window.addEventListener('DOMContentLoaded', loadProducts);
+    </script>
+</body>
+</html>
